@@ -132,6 +132,7 @@ const ini=n=>n.trim().split(/\s+/).slice(0,2).map(w=>w[0]).join('').toUpperCase(
 const col=n=>{let h=0;for(const c of n)h=(h*31+c.charCodeAt(0))%360;return `hsl(${h} 50% 92%);color:hsl(${h} 55% 30%)`};
 function toast(m){const t=$('toast');t.textContent=m;t.style.display='block';clearTimeout(toast.h);toast.h=setTimeout(()=>t.style.display='none',2500)}
 function opts(list,sel,all){return (all?'<option value="">All '+all+'</option>':'<option value="">Select…</option>')+list.map(x=>`<option ${x===sel?'selected':''}>${esc(x)}</option>`).join('')}
+const crs=c=>{const o=S.students.find(s=>s.course&&s.course.toLowerCase()===c.toLowerCase());return o?o.course:c};
 const sr=s=>S.students.filter(x=>x.batch===s.batch).findIndex(x=>x.id===s.id)+1;
 const cur=()=>S.students.find(s=>s.id===editId);
 const fs=b=>S.students.filter(s=>!b||s.batch===b).sort((p,q)=>S.batches.indexOf(p.batch)-S.batches.indexOf(q.batch));
@@ -145,7 +146,7 @@ $('main').innerHTML=bk()+`<div class=card><label>Date</label><input type=date va
 function vAttList(){const f=F.att,list=fs(f.bat),day=S.att[f.date]||{};
 const p=list.filter(s=>day[s.id]==='P').length,a=list.filter(s=>day[s.id]==='A').length;
 $('alist').innerHTML=list.length?`<div class=stats><div class="st g"><b>${p}</b>Present</div><div class="st r"><b>${a}</b>Absent</div><div class=st><b>${list.length-p-a}</b>Unmarked</div></div><div class=bar><span>${list.length} students</span><button class=sec onclick="allP()">✓ All Present</button></div>`+
-list.map(s=>`<div class=item><div class=av style="background:${col(s.name)}">${ini(s.name)}</div><div class=nm>${esc(s.name)}<small>#${sr(s)} · Roll ${esc(s.roll||'-')} · ${esc(s.batch)}</small></div><div class=pa><button class="${day[s.id]==='P'?'on p':''}" onclick="mark('${s.id}','P')">P</button><button class="${day[s.id]==='A'?'on a':''}" onclick="mark('${s.id}','A')">A</button></div></div>`).join(''):'<p class=empty>No students here yet. Add them in the Students tab.</p>'}
+list.map(s=>`<div class=item><div class=av style="background:${col(s.name)}">${ini(s.name)}</div><div class=nm>${esc(s.name)}<small>#${sr(s)} · Roll ${esc(s.roll||'-')}${s.course?' · '+esc(s.course):''} · ${esc(s.batch)}</small></div><div class=pa><button class="${day[s.id]==='P'?'on p':''}" onclick="mark('${s.id}','P')">P</button><button class="${day[s.id]==='A'?'on a':''}" onclick="mark('${s.id}','A')">A</button></div></div>`).join(''):'<p class=empty>No students here yet. Add them in the Students tab.</p>'}
 function mark(id,v){const d=F.att.date;S.att[d]=S.att[d]||{};if(S.att[d][id]===v)delete S.att[d][id];else S.att[d][id]=v;if(!Object.keys(S.att[d]).length)delete S.att[d];save();vAttList()}
 function allP(){const d=F.att.date;S.att[d]=S.att[d]||{};fs(F.att.bat).forEach(s=>S.att[d][s.id]='P');save();vAttList()}
 
@@ -154,18 +155,18 @@ function vStu(){const e=S.students.find(s=>s.id===editId)||{};
 $('main').innerHTML=`<div class=card><b>${editId?'Edit student':'Add student'}</b>
 <label>Batch *</label><select id=sb onchange="F.sb=this.value;updSr()">${opts(S.batches,e.batch||F.sb)}</select>
 <div class=row><div><label>Serial No (auto)</label><input id=ssr readonly></div><div><label>Roll No *</label><input id=sroll value="${esc(e.roll)}"></div></div>
-<label>Name *</label><input id=sn value="${esc(e.name)}"><label>Father's Name</label><input id=sf value="${esc(e.father)}">
+<label>Name *</label><input id=sn value="${esc(e.name)}"><label>Father's Name</label><input id=sf value="${esc(e.father)}"><label>Course</label><input id=scr list=scl placeholder="e.g. DIT, CIT, OAT" value="${esc(e.course)}"><datalist id=scl>${[...new Set(['DIT','CIT','OAT',...S.students.map(s=>s.course).filter(Boolean)])].map(c=>`<option value="${esc(c)}">`).join('')}</datalist>
 
 <div class=row style="margin-top:10px"><button class=pri onclick="saveStu()">${editId?'Update':'Add'}</button>${editId?'<button class=sec onclick="editId=null;vStu()">Cancel</button>':''}</div></div>
 <input placeholder="Search student…" value="${esc(F.q)}" oninput="F.q=this.value;vStuList()" style="margin-bottom:10px"><div id=slist></div>`;vStuList();updSr()}
 function updSr(){const b=$('sb').value,c=cur();$('ssr').value=!b?'-':(c&&c.batch===b)?sr(c):S.students.filter(s=>s.batch===b).length+1}
-function vStuList(){const q=F.q.toLowerCase(),list=S.students.filter(s=>(s.name+' '+(s.father||'')+' '+(s.roll||'')).toLowerCase().includes(q)).sort((p,q)=>S.batches.indexOf(p.batch)-S.batches.indexOf(q.batch));
+function vStuList(){const q=F.q.toLowerCase(),list=S.students.filter(s=>(s.name+' '+(s.father||'')+' '+(s.roll||'')+' '+(s.course||'')).toLowerCase().includes(q)).sort((p,q)=>S.batches.indexOf(p.batch)-S.batches.indexOf(q.batch));
 let h='',last='';list.forEach(s=>{if(s.batch!==last){last=s.batch;h+=`<div class=bar><b>${esc(s.batch)}</b></div>`}
-h+=`<div class=item><div class=av style="background:${col(s.name)}">${ini(s.name)}</div><div class=nm>${esc(s.name)}<small>#${sr(s)} · Roll ${esc(s.roll||'-')}${s.father?' · Father: '+esc(s.father):''}</small></div><div class=acts><button class=sec onclick="editId='${s.id}';vStu();scrollTo(0,0)">Edit</button><button class=dng onclick="delStu('${s.id}')">${pend===s.id?'Sure?':'Delete'}</button></div></div>`});
+h+=`<div class=item><div class=av style="background:${col(s.name)}">${ini(s.name)}</div><div class=nm>${esc(s.name)}<small>#${sr(s)} · Roll ${esc(s.roll||'-')}${s.course?' · '+esc(s.course):''}${s.father?' · Father: '+esc(s.father):''}</small></div><div class=acts><button class=sec onclick="editId='${s.id}';vStu();scrollTo(0,0)">Edit</button><button class=dng onclick="delStu('${s.id}')">${pend===s.id?'Sure?':'Delete'}</button></div></div>`});
 $('slist').innerHTML=h||'<p class=empty>No students yet.</p>'}
 function saveStu(){const v=id=>$(id).value.trim(),n=v('sn'),b=v('sb'),rl=v('sroll');if(!n||!b||!rl)return toast('Batch, Roll No and Name are required');
 if(S.students.some(s=>s.id!==editId&&s.batch===b&&s.roll===rl))return toast('Roll No already used in this batch');F.sb=b;
-const d={name:n,father:v('sf'),roll:rl,batch:b};
+const d={name:n,father:v('sf'),roll:rl,batch:b,course:crs(v('scr'))};
 if(editId)Object.assign(S.students.find(s=>s.id===editId),d);else S.students.push({id:Date.now().toString(36)+Math.random().toString(36).slice(2,5),...d});
 editId=null;save();toast('Saved');vStu()}
 function delStu(id){if(pend!==id){pend=id;vStuList();setTimeout(()=>{if(pend===id){pend=null;vStuList()}},3000);return}
@@ -177,13 +178,13 @@ function vRep(){const f=F.rep;
 $('main').innerHTML=`<div class=card><label>Batch</label><select onchange="F.rep.bat=this.value;vRepTbl()">${opts(S.batches,f.bat,'batches')}</select>
 <div class=row><div><label>From</label><input type=date value="${f.from}" onchange="F.rep.from=this.value;vRepTbl()"></div><div><label>To</label><input type=date value="${f.to}" onchange="F.rep.to=this.value;vRepTbl()"></div></div>
 <div style="margin-top:10px"><button class=pri onclick="pdf()">📄 Download PDF</button></div></div><div class=card><div class=tw id=rt></div></div>`;vRepTbl()}
-function vRepTbl(){const r=calc(F.rep);$('rt').innerHTML=r.length?`<div class=stats><div class="st"><b>${r.length}</b>Students</div><div class="st g"><b>${Math.round(r.reduce((x,s)=>x+s.pc,0)/r.length*10)/10}%</b>Average</div><div class="st r"><b>${r.filter(s=>s.t&&s.pc<75).length}</b>Below 75%</div></div><table><tr><th>Sr</th><th>Roll</th><th>Name</th><th>Father</th><th class=r>Total</th><th class=r>Attended</th><th class=r>%</th></tr>`+r.map((s,i)=>`<tr><td>${sr(s)}</td><td>${esc(s.roll)}</td><td>${esc(s.name)}</td><td>${esc(s.father)}</td><td class=r>${s.t}</td><td class=r>${s.a}</td><td class=r><span class="${s.t&&s.pc<75?'low':''}">${s.pc}%</span><div class=pb><i style="width:${s.pc}%;background:${s.pc<75?'var(--no)':'var(--ok)'}"></i></div></td></tr>`).join('')+'</table>':'<p class=empty>No students match.</p>'}
+function vRepTbl(){const r=calc(F.rep);$('rt').innerHTML=r.length?`<div class=stats><div class="st"><b>${r.length}</b>Students</div><div class="st g"><b>${Math.round(r.reduce((x,s)=>x+s.pc,0)/r.length*10)/10}%</b>Average</div><div class="st r"><b>${r.filter(s=>s.t&&s.pc<75).length}</b>Below 75%</div></div><table><tr><th>Sr</th><th>Roll</th><th>Name</th><th>Father</th><th>Course</th><th class=r>Total</th><th class=r>Attended</th><th class=r>%</th></tr>`+r.map((s,i)=>`<tr><td>${sr(s)}</td><td>${esc(s.roll)}</td><td>${esc(s.name)}</td><td>${esc(s.father)}</td><td>${esc(s.course)}</td><td class=r>${s.t}</td><td class=r>${s.a}</td><td class=r><span class="${s.t&&s.pc<75?'low':''}">${s.pc}%</span><div class=pb><i style="width:${s.pc}%;background:${s.pc<75?'var(--no)':'var(--ok)'}"></i></div></td></tr>`).join('')+'</table>':'<p class=empty>No students match.</p>'}
 async function pdf(){const f=F.rep,rows=calc(f);if(!rows.length)return toast('No students to export');
 if(!window.jspdf)return toast('PDF library did not load');
 const avg=Math.round(rows.reduce((a,s)=>a+s.pc,0)/rows.length*10)/10,low=rows.filter(s=>s.t&&s.pc<75).length;
 const p=new window.jspdf.jsPDF();let y=pdfHead(p,'Attendance Report');
 y=infoBox(p,y,[['Batch',f.bat||'All batches'],['From',f.from||'Start'],['To',f.to||today()]],[['Students',rows.length],['Date',today()]]);
-y=table2(p,y+6,[{h:'Sr',w:10,a:'c'},{h:'Roll No',w:28,a:'c',wrap:1},{h:'Name',w:44,wrap:1},{h:"Father's Name",w:36,wrap:1},{h:'Batch',w:16,a:'c'},{h:'Total',w:14,a:'c'},{h:'Attended',w:18,a:'c'},{h:'%',w:16,a:'c',cf:t=>t==='-'?null:parseFloat(t)<75?[201,58,58]:[26,138,74]}],rows.map(s=>[sr(s),s.roll||'-',s.name,s.father||'-',s.batch,s.t,s.a,s.t?s.pc+'%':'-']));
+y=table2(p,y+6,[{h:'Sr',w:9,a:'c'},{h:'Roll No',w:24,a:'c',wrap:1},{h:'Name',w:38,wrap:1},{h:"Father's Name",w:32,wrap:1},{h:'Course',w:20,wrap:1},{h:'Batch',w:15,a:'c'},{h:'Total',w:13,a:'c'},{h:'Attended',w:17,a:'c'},{h:'%',w:14,a:'c',cf:t=>t==='-'?null:parseFloat(t)<75?[201,58,58]:[26,138,74]}],rows.map(s=>[sr(s),s.roll||'-',s.name,s.father||'-',s.course||'-',s.batch,s.t,s.a,s.t?s.pc+'%':'-']));
 y=tiles(p,y+8,[{l:'STUDENTS',v:rows.length},{l:'AVERAGE ATTENDANCE',v:avg+'%'},{l:'BELOW 75%',v:low,c:[201,58,58]}]);
 sign(p,y);foot(p);await savePdf(p,`WWC-attendance-${f.bat||'all'}-${today()}.pdf`.replace(/\s+/g,'_'))}
 
@@ -217,7 +218,7 @@ $('main').innerHTML=`<button class=sec onclick="F.mk.ex=null;pend=null;vMk()">�
 function vML(){const x=S.exams.find(e=>e.id===F.mk.ex),b=F.mk.bat;
 if(!b){$('ms').innerHTML='';$('tp').innerHTML='';$('ml').innerHTML='<p class=empty>Choose a batch to see its students.</p>';return}
 const list=fs(b);vMS();
-$('ml').innerHTML=list.map(s=>`<div class=item id="r_${s.id}"><div class=av id="a_${s.id}" style="background:${col(s.name)}">${ini(s.name)}</div><div class=nm>${esc(s.name)}<small>#${sr(s)} · Roll ${esc(s.roll||'-')}</small></div><input class=mi type=number inputmode=decimal placeholder="-" value="${x.marks[s.id]==null?'':x.marks[s.id]}" oninput="setM('${s.id}',this.value)"><span class=bd id="b_${s.id}"></span></div>`).join('')||'<p class=empty>No students in this batch.</p>';
+$('ml').innerHTML=list.map(s=>`<div class=item id="r_${s.id}"><div class=av id="a_${s.id}" style="background:${col(s.name)}">${ini(s.name)}</div><div class=nm>${esc(s.name)}<small>#${sr(s)} · Roll ${esc(s.roll||'-')}${s.course?' · '+esc(s.course):''}</small></div><input class=mi type=number inputmode=decimal placeholder="-" value="${x.marks[s.id]==null?'':x.marks[s.id]}" oninput="setM('${s.id}',this.value)"><span class=bd id="b_${s.id}"></span></div>`).join('')||'<p class=empty>No students in this batch.</p>';
 list.forEach(s=>bdg(x,s.id));hl(x)}
 function ranksB(x){return ranks(x,F.mk.bat)}
 function vTP(x){const r=ranksB(x),t=fs(F.mk.bat).filter(s=>r[s.id]<=3).sort((p,q)=>r[p.id]-r[q.id]),o=['','1st','2nd','3rd'];
@@ -277,13 +278,13 @@ const to=rows.reduce((a,o)=>a+o.x.total,0),ob=rows.reduce((a,o)=>a+o.v,0);
 return{s,rows,to,ob,pc:to?Math.round(ob/to*1000)/10:0,ps:rows.filter(o=>o.t==='Pass').length,n:rows.length}}
 function openSt(){const v=$('sst').value;if(!v)return toast('Select a student');F.mk.st=v;vMk();scrollTo(0,0)}
 function vSheet(){const d=sheet(F.mk.st);if(!d){F.mk.st=null;return vMk()}
-$('main').innerHTML=`<button class=sec onclick="F.mk.st=null;vMk()">‹ Back</button><div class=card style="margin-top:10px"><b>${esc(d.s.name)}</b><span class=hint> · ${esc(d.s.batch)}</span><p class=hint style="margin:4px 0 0">Roll ${esc(d.s.roll||'-')} · Serial #${sr(d.s)}${d.s.father?' · Father: '+esc(d.s.father):''}</p></div>
+$('main').innerHTML=`<button class=sec onclick="F.mk.st=null;vMk()">‹ Back</button><div class=card style="margin-top:10px"><b>${esc(d.s.name)}</b><span class=hint> · ${esc(d.s.batch)}</span><p class=hint style="margin:4px 0 0">Roll ${esc(d.s.roll||'-')}${d.s.course?' · '+esc(d.s.course):''} · Serial #${sr(d.s)}${d.s.father?' · Father: '+esc(d.s.father):''}</p></div>
 <div class=stats><div class=st><b>${d.ob}/${d.to}</b>Marks</div><div class="st g"><b>${d.pc}%</b>Percentage</div><div class=st><b>${d.ps}/${d.n}</b>Passed</div></div>
 <div class=card><div class=tw><table><tr><th>Course</th><th>Exam</th><th class=r>Total</th><th class=r>Pass</th><th class=r>Got</th><th>Pos</th><th></th></tr>${d.rows.map(o=>`<tr><td>${esc(o.x.course)}</td><td>${esc(o.x.title)}</td><td class=r>${o.x.total}</td><td class=r>${o.x.pass}</td><td class=r>${o.v==null?'-':o.v}</td><td>${o.r?ord(o.r):'-'}</td><td><span class="bd ${bcls[o.t]||''}">${o.t||'-'}</span></td></tr>`).join('')||'<tr><td colspan=7>No exams yet.</td></tr>'}</table></div></div>
 <button class=pri onclick="stuPdf()">Download marksheet PDF</button>`}
 async function stuPdf(){const d=sheet(F.mk.st);if(!d||!window.jspdf)return toast('PDF library did not load');
 const p=new window.jspdf.jsPDF();let y=pdfHead(p,'Student Marksheet');
-y=infoBox(p,y,[['Name',d.s.name],["Father's Name",d.s.father||'-'],['Roll No',d.s.roll||'-']],[['Batch',d.s.batch],['Serial No',sr(d.s)],['Date',today()]]);
+y=infoBox(p,y,[['Name',d.s.name],["Father's Name",d.s.father||'-'],['Roll No',d.s.roll||'-']],[['Batch',d.s.batch],['Course',d.s.course||'-'],['Serial No',sr(d.s)]]);
 y=table2(p,y+6,[{h:'#',w:9,a:'c'},{h:'Course',w:38,wrap:1},{h:'Test',w:42,wrap:1},{h:'Total',w:18,a:'c'},{h:'Passing',w:19,a:'c'},{h:'Obtained',w:21,a:'c'},{h:'Position',w:17,a:'c'},{h:'Status',w:18,a:'c',st:1}],d.rows.map((o,i)=>[i+1,o.x.course,o.x.title,o.x.total,o.x.pass,o.v,o.r?ord(o.r):'-',o.t]));
 y=tiles(p,y+8,[{l:'TOTAL MARKS',v:d.ob+' / '+d.to},{l:'PERCENTAGE',v:d.pc+'%'},{l:'TESTS PASSED',v:d.ps+' of '+d.n,c:[26,138,74]}]);
 sign(p,y);foot(p);await savePdf(p,`Marksheet-${d.s.name}-${d.s.batch}.pdf`.replace(/\s+/g,'_'))}
@@ -291,7 +292,7 @@ async function resPdf(){const x=S.exams.find(e=>e.id===F.mk.ex),b=F.mk.bat;if(!x
 const r=ranks(x,b),l=fs(b).sort((p,q)=>(x.marks[q.id]??-1)-(x.marks[p.id]??-1));
 const p=new window.jspdf.jsPDF();let y=pdfHead(p,'Result Sheet');
 y=infoBox(p,y,[['Batch',b],['Course',x.course],['Test',x.title]],[['Total Marks',x.total],['Passing Marks',x.pass],['Date',today()]]);
-y=table2(p,y+6,[{h:'Pos',w:14,a:'c'},{h:'Roll',w:18,a:'c'},{h:'Name',w:54,wrap:1},{h:"Father's Name",w:52,wrap:1},{h:'Obtained',w:24,a:'c'},{h:'Status',w:20,a:'c',st:1}],l.map(s=>[r[s.id]?ord(r[s.id]):'-',s.roll||'-',s.name,s.father||'-',x.marks[s.id]==null?'-':x.marks[s.id],stat(x,x.marks[s.id])||'Pending']));
+y=table2(p,y+6,[{h:'Pos',w:12,a:'c'},{h:'Roll',w:16,a:'c',wrap:1},{h:'Name',w:46,wrap:1},{h:"Father's Name",w:42,wrap:1},{h:'Course',w:20,wrap:1},{h:'Obtained',w:22,a:'c'},{h:'Status',w:24,a:'c',st:1}],l.map(s=>[r[s.id]?ord(r[s.id]):'-',s.roll||'-',s.name,s.father||'-',s.course||'-',x.marks[s.id]==null?'-':x.marks[s.id],stat(x,x.marks[s.id])||'Pending']));
 const ps=l.filter(s=>stat(x,x.marks[s.id])==='Pass').length,fl=l.filter(s=>stat(x,x.marks[s.id])==='Fail').length;
 y=tiles(p,y+8,[{l:'PASSED',v:ps,c:[26,138,74]},{l:'FAILED',v:fl,c:[201,58,58]},{l:'PENDING',v:l.length-ps-fl}]);
 sign(p,y);foot(p);await savePdf(p,`Result-${b}-${x.course}-${x.title}.pdf`.replace(/\s+/g,'_'))}
